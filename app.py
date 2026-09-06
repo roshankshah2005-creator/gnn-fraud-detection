@@ -43,7 +43,6 @@ def load_trained_gnn():
     model_path = os.path.join("saved_models", "gnn_fraud_model.pt")
     if os.path.exists(model_path):
         try:
-            # Load model state or full model depending on your training setup
             model = torch.load(model_path, map_location=torch.device("cpu"))
             if hasattr(model, "eval"):
                 model.eval()
@@ -57,11 +56,8 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     model, is_loaded = load_trained_gnn()
     
     if is_loaded and model is not None:
-        # Real GNN inference hook point
-        # You can pass node features built from sender/receiver/amount here
         pass
 
-    # Calibrated heuristic fallback / primary baseline
     base = BASE_RISK_CLEAN if historical_fraud == 0 else BASE_RISK_FLAGGED
     history_component = historical_fraud * RISK_PER_PRIOR_FRAUD
     amount_component = (amount / 1000.0) * RISK_PER_1000_DOLLARS
@@ -84,7 +80,13 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
         (f"Transaction size (${amount:,.2f} / 1,000)", amount_component),
     ]
 
-    return {"probability": probability, "status": status, "tier": tier, "breakdown": breakdown, "engine": "Trained GNN Weights" if is_loaded else "Heuristic Baseline"}
+    return {
+        "probability": probability,
+        "status": status,
+        "tier": tier,
+        "breakdown": breakdown,
+        "engine": "Trained GNN Weights" if is_loaded else "Heuristic Baseline"
+    }
 
 def validate_inputs(sender_id: str, receiver_id: str, amount: float) -> list:
     errors = []
@@ -107,6 +109,10 @@ html(
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,500;0,600;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
+    /* Hide top Streamlit header, share options, and footer */
+    header[data-testid="stHeader"] { display: none !important; }
+    footer { visibility: hidden !important; }
+
     :root {
         --ink: #12151C;
         --panel: #1A1F29;

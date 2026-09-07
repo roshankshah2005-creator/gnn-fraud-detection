@@ -1,3 +1,4 @@
+import math
 import os
 import textwrap
 import streamlit as st
@@ -22,7 +23,6 @@ st.set_page_config(
 BASE_RISK_CLEAN = 5.0
 BASE_RISK_FLAGGED = 15.0
 RISK_PER_PRIOR_FRAUD = 5.0
-RISK_PER_1000_DOLLARS = 15.0  # Increased weight so large values drive up risk properly
 FRAUD_THRESHOLD = 50.0
 REVIEW_THRESHOLD = 25.0
 MIN_SCORE, MAX_SCORE = 1.0, 99.9
@@ -52,7 +52,7 @@ def load_trained_gnn():
     return None, False
 
 def score_transaction(amount: float, historical_fraud: int, sender_id: str, receiver_id: str) -> dict:
-    """Compute fraud score using trained GNN if available, otherwise use calibrated heuristic."""
+    """Compute fraud score using trained GNN if available, otherwise use log-scaled heuristic."""
     model, is_loaded = load_trained_gnn()
     
     if is_loaded and model is not None:
@@ -60,7 +60,11 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
 
     base = BASE_RISK_CLEAN if historical_fraud == 0 else BASE_RISK_FLAGGED
     history_component = historical_fraud * RISK_PER_PRIOR_FRAUD
-    amount_component = (amount / 1000.0) * RISK_PER_1000_DOLLARS
+    
+    # Logarithmic scaling: handles any amount value smoothly without blowing up
+    # log10(1) = 0, log10(1,000) = 3, log10(1,000,000) = 6
+    safe_amount = max(amount, 1.0)
+    amount_component = math.log10(safe_amount) * 7.5
 
     raw_score = base + history_component + amount_component
     probability = min(max(raw_score, MIN_SCORE), MAX_SCORE)
@@ -77,7 +81,7 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     breakdown = [
         ("Base risk (Model Heuristic)", base),
         (f"Prior fraud incidents ({historical_fraud} × {RISK_PER_PRIOR_FRAUD})", history_component),
-        (f"Transaction size (${amount:,.2f} / 1k × 15)", amount_component),
+        (f"Transaction size (Log scale factor for ${amount:,.2f})", amount_component),
     ]
 
     return {

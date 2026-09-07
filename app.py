@@ -21,8 +21,8 @@ st.set_page_config(
 
 BASE_RISK_CLEAN = 5.0
 BASE_RISK_FLAGGED = 15.0
-RISK_PER_PRIOR_FRAUD = 3.5
-RISK_PER_1000_DOLLARS = 1.0
+RISK_PER_PRIOR_FRAUD = 5.0
+RISK_PER_1000_DOLLARS = 15.0  # Increased weight so large values drive up risk properly
 FRAUD_THRESHOLD = 50.0
 REVIEW_THRESHOLD = 25.0
 MIN_SCORE, MAX_SCORE = 1.0, 99.9
@@ -77,7 +77,7 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     breakdown = [
         ("Base risk (Model Heuristic)", base),
         (f"Prior fraud incidents ({historical_fraud} × {RISK_PER_PRIOR_FRAUD})", history_component),
-        (f"Transaction size (${amount:,.2f} / 1,000)", amount_component),
+        (f"Transaction size (${amount:,.2f} / 1k × 15)", amount_component),
     ]
 
     return {

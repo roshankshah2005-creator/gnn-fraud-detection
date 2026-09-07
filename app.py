@@ -61,8 +61,6 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     base = BASE_RISK_CLEAN if historical_fraud == 0 else BASE_RISK_FLAGGED
     history_component = historical_fraud * RISK_PER_PRIOR_FRAUD
     
-    # Bounded Asymptotic Scaling:
-    # Smoothly scales from 0 up to a maximum cap (~35 points) even for 1,000,000,000,000+
     safe_amount = max(amount, 1.0)
     log_val = math.log10(safe_amount)
     amount_component = 35.0 * (2.0 / math.pi) * math.atan(log_val / 2.5)

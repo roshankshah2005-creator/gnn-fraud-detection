@@ -52,7 +52,7 @@ def load_trained_gnn():
     return None, False
 
 def score_transaction(amount: float, historical_fraud: int, sender_id: str, receiver_id: str) -> dict:
-    """Compute fraud score using trained GNN if available, otherwise use log-scaled heuristic."""
+    """Compute fraud score using bounded asymptotic scaling for any amount up to trillions."""
     model, is_loaded = load_trained_gnn()
     
     if is_loaded and model is not None:
@@ -61,10 +61,11 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     base = BASE_RISK_CLEAN if historical_fraud == 0 else BASE_RISK_FLAGGED
     history_component = historical_fraud * RISK_PER_PRIOR_FRAUD
     
-    # Logarithmic scaling: handles any amount value smoothly without blowing up
-    # log10(1) = 0, log10(1,000) = 3, log10(1,000,000) = 6
+    # Bounded Asymptotic Scaling:
+    # Smoothly scales from 0 up to a maximum cap (~35 points) even for 1,000,000,000,000+
     safe_amount = max(amount, 1.0)
-    amount_component = math.log10(safe_amount) * 7.5
+    log_val = math.log10(safe_amount)
+    amount_component = 35.0 * (2.0 / math.pi) * math.atan(log_val / 2.5)
 
     raw_score = base + history_component + amount_component
     probability = min(max(raw_score, MIN_SCORE), MAX_SCORE)
@@ -81,7 +82,7 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     breakdown = [
         ("Base risk (Model Heuristic)", base),
         (f"Prior fraud incidents ({historical_fraud} × {RISK_PER_PRIOR_FRAUD})", history_component),
-        (f"Transaction size (Log scale factor for ${amount:,.2f})", amount_component),
+        (f"Transaction size scaling (for ${amount:,.2f})", amount_component),
     ]
 
     return {

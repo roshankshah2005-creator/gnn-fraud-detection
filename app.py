@@ -27,10 +27,11 @@ FRAUD_THRESHOLD = 50.0
 REVIEW_THRESHOLD = 25.0
 MIN_SCORE, MAX_SCORE = 1.0, 99.9
 
+# Updated descriptive tier naming requested: Good, Maybe Fraud, Highly Fraud
 TIER_STYLE = {
-    "clear":  {"word": "CLEAR",       "color": "var(--clear)"},
-    "review": {"word": "REVIEW",      "color": "var(--review)"},
-    "alert":  {"word": "FRAUD ALERT", "color": "var(--alert)"},
+    "good":  {"word": "GOOD",          "color": "var(--clear)"},
+    "maybe": {"word": "MAYBE FRAUD",   "color": "var(--review)"},
+    "fraud": {"word": "HIGHLY FRAUD",  "color": "var(--alert)"},
 }
 
 # --------------------------------------------------------------------------
@@ -61,6 +62,7 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     base = BASE_RISK_CLEAN if historical_fraud == 0 else BASE_RISK_FLAGGED
     history_component = historical_fraud * RISK_PER_PRIOR_FRAUD
     
+    # Bounded Asymptotic Scaling (handles anything from $10 to $1,000,000,000,000 safely)
     safe_amount = max(amount, 1.0)
     log_val = math.log10(safe_amount)
     amount_component = 35.0 * (2.0 / math.pi) * math.atan(log_val / 2.5)
@@ -69,13 +71,13 @@ def score_transaction(amount: float, historical_fraud: int, sender_id: str, rece
     probability = min(max(raw_score, MIN_SCORE), MAX_SCORE)
 
     if probability > FRAUD_THRESHOLD:
-        tier = "alert"
+        tier = "fraud"
     elif probability >= REVIEW_THRESHOLD:
-        tier = "review"
+        tier = "maybe"
     else:
-        tier = "clear"
+        tier = "good"
 
-    status = "FRAUD_ALERT" if probability > FRAUD_THRESHOLD else "APPROVED"
+    status = "HIGHLY_FRAUD_ALERT" if tier == "fraud" else ("MAYBE_FRAUD_REVIEW" if tier == "maybe" else "GOOD_APPROVED")
 
     breakdown = [
         ("Base risk (Model Heuristic)", base),
